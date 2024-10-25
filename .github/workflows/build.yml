@@ -164,16 +164,9 @@ jobs:
           name: build-Linux
           path: ./PKGBUILD/
 
-      - name: Calculate SHA256 and Update PKGBUILD
+      - name: Update PKGBUILD version
         run: |
-          cd ./PKGBUILD/
-          SHA256_AMD64=$(sha256sum xmcl-*-amd64.deb | awk '{print $1}')
-          SHA256_ARM64=$(sha256sum xmcl-*-arm64.deb | awk '{print $1}')
-
-          sed -i \
-            -e "s/sha256sums_x86_64=('.*')/sha256sums_x86_64=('$SHA256_AMD64')/" \
-            -e "s/sha256sums_aarch64=('.*')/sha256sums_aarch64=('$SHA256_ARM64')/" \
-            PKGBUILD
+          sed -i "s/pkgver=.*/pkgver=${{ steps.prepare_release.outputs.version }}/" PKGBUILD/PKGBUILD
 
       - name: Install Dependencies and Build Package
         run: |
