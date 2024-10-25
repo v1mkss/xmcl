@@ -181,7 +181,9 @@ jobs:
           pacman -Syu --noconfirm base-devel
 
           cd ./PKGBUILD/
-          makepkg -sf --noconfirm
+          useradd builder -m
+          chown -R builder:builder ./
+          su builder -c 'makepkg -sf --noconfirm'
 
           for f in *.pkg.tar.zst; do
             mv "$f" "${f%.pkg.tar.zst}.pacman"
@@ -191,7 +193,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-Arch
-          path: ./xmcl/PKGBUILD/*.pacman
+          path: ./PKGBUILD/*.pacman
 
   prepare-release:
     runs-on: ubuntu-latest
