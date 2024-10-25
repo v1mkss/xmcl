@@ -162,11 +162,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-Linux
-          path: ./xmcl/PKGBUILD/
+          path: ./PKGBUILD/
 
       - name: Calculate SHA256 and Update PKGBUILD
         run: |
-          cd ./xmcl/PKGBUILD/
+          cd ./PKGBUILD/
           SHA256_AMD64=$(sha256sum xmcl-*-amd64.deb | awk '{print $1}')
           SHA256_ARM64=$(sha256sum xmcl-*-arm64.deb | awk '{print $1}')
 
@@ -180,7 +180,7 @@ jobs:
           # Update and install dependencies in one command
           pacman -Syu --noconfirm base-devel
 
-          cd ./xmcl/PKGBUILD/
+          cd ./PKGBUILD/
           makepkg -sf --noconfirm
 
           for f in *.pkg.tar.zst; do
