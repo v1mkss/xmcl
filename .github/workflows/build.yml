@@ -193,8 +193,18 @@ jobs:
           useradd builder -m
           chown -R builder:builder ./
 
-          # Set architecture in PKGBUILD
+          # Set architecture in PKGBUILD and add validation
           sed -i "s/arch=.*/arch=('${{ matrix.arch }}')/" PKGBUILD
+          if ! grep -q "arch=('${{ matrix.arch }}')" PKGBUILD; then
+            echo "ERROR: Failed to set architecture in PKGBUILD"
+            exit 1
+          fi
+
+          # Validate package availability for architecture
+          if ! su builder -c "makepkg -s --nobuild --nodeps"; then
+            echo "ERROR: Package is not available for ${{ matrix.arch }} architecture"
+            exit 1
+          fi
 
           su builder -c 'makepkg -sf --noconfirm'
 
