@@ -161,7 +161,7 @@ jobs:
     steps:
       - name: Install Dependencies
         run: |
-          pacman -Syu --noconfirm base-devel nodejs npm git
+          pacman -Syu --noconfirm base-devel nodejs npm
 
       - name: Install Git
         run: |
@@ -187,25 +187,24 @@ jobs:
         run: |
           sed -i "s/pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" PKGBUILD/PKGBUILD
 
-      - name: Build Package
+      - name: Prepare Build Environment
         run: |
           cd ./PKGBUILD/
           useradd builder -m
           chown -R builder:builder ./
 
-          # Set architecture in PKGBUILD and add validation
-          sed -i "s/arch=.*/arch=('${{ matrix.arch }}')/" PKGBUILD
-          if ! grep -q "arch=('${{ matrix.arch }}')" PKGBUILD; then
-            echo "ERROR: Failed to set architecture in PKGBUILD"
-            exit 1
+      - name: Configure Architecture
+        run: |
+          cd ./PKGBUILD/
+          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+            sed -i 's/arch=(.*)$/arch=("x86_64")/' PKGBUILD
+          else
+            sed -i 's/arch=(.*)$/arch=("aarch64")/' PKGBUILD
           fi
 
-          # Validate package availability for architecture
-          if ! su builder -c "makepkg -s --nobuild --nodeps"; then
-            echo "ERROR: Package is not available for ${{ matrix.arch }} architecture"
-            exit 1
-          fi
-
+      - name: Build Package
+        run: |
+          cd ./PKGBUILD/
           su builder -c 'makepkg -sf --noconfirm'
 
           if [ -f *.pkg.tar.zst ]; then
