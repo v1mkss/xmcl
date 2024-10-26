@@ -174,13 +174,18 @@ jobs:
           pacman -Syu --noconfirm base-devel
 
           cd ./PKGBUILD/
+          VERSION=$(node -p "require('../package.json').version")
+          sed -i "s/pkgver=.*/pkgver=$VERSION/" PKGBUILD
+
           useradd builder -m
           chown -R builder:builder ./
           su builder -c 'makepkg -sf --noconfirm'
 
-          for f in *.pkg.tar.zst; do
-            mv "$f" "${f%.pkg.tar.zst}.pacman"
-          done
+          if [ -f *.pkg.tar.zst ]; then
+            for f in *.pkg.tar.zst; do
+              mv "$f" "xmcl-launcher-${VERSION}-${CARCH}.pacman"
+            done
+          fi
 
       - name: Upload Arch Package
         uses: actions/upload-artifact@v4
