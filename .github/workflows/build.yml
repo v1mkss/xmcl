@@ -119,12 +119,8 @@ jobs:
           useradd builder -m
           chown -R builder:builder ./
 
-          # Set up architecture-specific files
-          if [ "${{ matrix.arch }}" = "x86_64" ]; then
-            find . -name "*amd64.deb" -exec cp {} xmcl-${{ steps.version.outputs.version }}-amd64.deb \;
-          elif [ "${{ matrix.arch }}" = "aarch64" ]; then
-            find . -name "*arm64.deb" -exec cp {} xmcl-${{ steps.version.outputs.version }}-arm64.deb \;
-          fi
+          find . -name "*amd64.deb" -exec cp {} xmcl-${{ steps.version.outputs.version }}-amd64.deb \;
+          find . -name "*arm64.deb" -exec cp {} xmcl-${{ steps.version.outputs.version }}-arm64.deb \;
 
           sed -i "s/pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" PKGBUILD
           sed -i "s/arch=(.*)/arch=('${{ matrix.arch }}')/" PKGBUILD
