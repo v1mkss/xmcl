@@ -188,7 +188,6 @@ jobs:
           chown -R builder:builder ./
           su builder -c 'makepkg -sf --noconfirm'
 
-          # Перейменування файлу в правильний формат
           if [ -f *.pkg.tar.zst ]; then
             for f in *.pkg.tar.zst; do
               mv "$f" "xmcl-launcher-${{ env.VERSION }}-x86_64.pacman"
