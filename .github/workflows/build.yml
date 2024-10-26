@@ -157,6 +157,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
 
       - name: Download Ubuntu Build Artifacts
         uses: actions/download-artifact@v4
@@ -164,26 +167,31 @@ jobs:
           name: build-Linux
           path: ./PKGBUILD/
 
+      - name: Install Dependencies
+        run: |
+          pacman -Syu --noconfirm base-devel nodejs npm git
+
+      - name: Set Version
+        id: pkg_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Update PKGBUILD version
         run: |
-          sed -i "s/pkgver=.*/pkgver=${{ steps.prepare_release.outputs.version }}/" PKGBUILD/PKGBUILD
+          sed -i "s/pkgver=.*/pkgver=${{ env.VERSION }}/" PKGBUILD/PKGBUILD
 
       - name: Install Dependencies and Build Package
         run: |
-          # Update and install dependencies in one command
-          pacman -Syu --noconfirm base-devel
-
           cd ./PKGBUILD/
-          VERSION=$(node -p "require('../package.json').version")
-          sed -i "s/pkgver=.*/pkgver=$VERSION/" PKGBUILD
-
           useradd builder -m
           chown -R builder:builder ./
           su builder -c 'makepkg -sf --noconfirm'
 
+          # Перейменування файлу в правильний формат
           if [ -f *.pkg.tar.zst ]; then
             for f in *.pkg.tar.zst; do
-              mv "$f" "xmcl-launcher-${VERSION}-${CARCH}.pacman"
+              mv "$f" "xmcl-launcher-${{ env.VERSION }}-x86_64.pacman"
             done
           fi
 
