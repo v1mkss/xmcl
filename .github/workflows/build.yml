@@ -159,14 +159,18 @@ jobs:
     container: archlinux:latest
 
     steps:
+      - name: Install Dependencies
+        run: |
+          pacman -Syu --noconfirm base-devel nodejs npm git
+
+      - name: Install Git
+        run: |
+          pacman -S --noconfirm git
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
-
-      - name: Install Dependencies
-        run: |
-          pacman -Syu --noconfirm base-devel nodejs npm git
 
       - name: Download Ubuntu Build Artifacts
         uses: actions/download-artifact@v4
@@ -174,9 +178,14 @@ jobs:
           name: build-Linux
           path: ./PKGBUILD/
 
+      - name: Extract version
+        id: version
+        run: |
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
       - name: Update PKGBUILD version
         run: |
-          sed -i "s/pkgver=.*/pkgver=${{ env.VERSION }}/" PKGBUILD/PKGBUILD
+          sed -i "s/pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" PKGBUILD/PKGBUILD
 
       - name: Build Package
         run: |
@@ -191,7 +200,7 @@ jobs:
 
           if [ -f *.pkg.tar.zst ]; then
             for f in *.pkg.tar.zst; do
-              mv "$f" "xmcl-launcher-${{ env.VERSION }}-${{ matrix.arch }}.pacman"
+              mv "$f" "xmcl-launcher-${{ steps.version.outputs.version }}-${{ matrix.arch }}.pacman"
             done
           fi
 
