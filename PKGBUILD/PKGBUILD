@@ -15,31 +15,12 @@ optdepends=('jre8-openjdk: Minimum requirement for launching older game versions
 
 options=(!strip !debug)
 
-source=("xmcl-$pkgver-amd64.deb" "xmcl-$pkgver-arm64.deb")
-sha256sums=('SKIP' 'SKIP')
-
-prepare() {
-    mkdir -p "${srcdir}"
-    find . -name "*amd64.deb" -type f -exec cp {} "${srcdir}/xmcl-$pkgver-amd64.deb" \;
-    find . -name "*arm64.deb" -type f -exec cp {} "${srcdir}/xmcl-$pkgver-arm64.deb" \;
-}
+source=("xmcl-$pkgver-$CARCH.deb")
+sha256sums=('SKIP')
 
 package() {
     cd "${srcdir}"
-
-    if [ "$CARCH" = "x86_64" ]; then
-        # For x86_64, package both amd64 and arm64 versions
-        bsdtar -xf "xmcl-$pkgver-amd64.deb" data.tar.xz
-        bsdtar -xf data.tar.xz -C "$pkgdir"
-        rm data.tar.xz
-
-        mkdir -p "$pkgdir/opt/xmcl-arm64"
-        bsdtar -xf "xmcl-$pkgver-arm64.deb" data.tar.xz
-        bsdtar -xf data.tar.xz -C "$pkgdir/opt/xmcl-arm64"
-    elif [ "$CARCH" = "aarch64" ]; then
-        bsdtar -xf "xmcl-$pkgver-arm64.deb" data.tar.xz
-        bsdtar -xf data.tar.xz -C "$pkgdir"
-    fi
-
+    bsdtar -xf "xmcl-$pkgver-$CARCH.deb" data.tar.xz
+    bsdtar -xf data.tar.xz -C "$pkgdir"
     install -dv "${pkgdir}/usr/bin"
 }

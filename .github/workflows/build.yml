@@ -79,65 +79,68 @@ jobs:
             ~/.cache/electron-builder
           key: ${{ runner.os }}-electron-build-${{ hashFiles('**/pnpm-lock.yaml') }}
 
-  build-arch:
-    needs: build
-    runs-on: ubuntu-latest
-    if: ${{ startsWith(github.event.head_commit.message, 'chore(release)') }}
-    strategy:
-      matrix:
-        arch: [x86_64, aarch64]
-    container: archlinux:latest
+    build-arch:
+      needs: build
+      runs-on: ubuntu-latest
+      if: ${{ startsWith(github.event.head_commit.message, 'chore(release)') }}
+      strategy:
+        matrix:
+          include:
+            - arch: x86_64
+              pkg_arch: amd64
+            - arch: aarch64
+              pkg_arch: arm64
+      container: archlinux:latest
+      steps:
+        - name: Install Dependencies
+          run: |
+            pacman -Syu --noconfirm base-devel nodejs npm
 
-    steps:
-      - name: Install Dependencies
-        run: |
-          pacman -Syu --noconfirm base-devel nodejs npm
+        - name: Install Git
+          run: |
+            pacman -S --noconfirm git
 
-      - name: Install Git
-        run: |
-          pacman -S --noconfirm git
+        - uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+            submodules: recursive
 
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: recursive
+        - name: Download Ubuntu Build Artifacts
+          uses: actions/download-artifact@v4
+          with:
+            name: build-Linux
+            path: ./PKGBUILD/
 
-      - name: Download Ubuntu Build Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-Linux
-          path: ./PKGBUILD/
+        - name: Extract version
+          id: version
+          run: |
+            echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
-      - name: Extract version
-        id: version
-        run: |
-          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+        - name: Build Package
+          run: |
+            cd ./PKGBUILD/
+            useradd builder -m
+            chown -R builder:builder ./
 
-      - name: Build Package
-        run: |
-          cd ./PKGBUILD/
-          useradd builder -m
-          chown -R builder:builder ./
+            # Copy the needed .deb file
+            find . -name "*${{ matrix.pkg_arch }}.deb" -exec cp {} xmcl-${{ steps.version.outputs.version }}-${{ matrix.pkg_arch }}.deb \;
 
-          find . -name "*amd64.deb" -exec cp {} xmcl-${{ steps.version.outputs.version }}-amd64.deb \;
-          find . -name "*arm64.deb" -exec cp {} xmcl-${{ steps.version.outputs.version }}-arm64.deb \;
+            sed -i "s/pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" PKGBUILD
+            sed -i "s/arch=(.*)/arch=('${{ matrix.arch }}')/" PKGBUILD
 
-          sed -i "s/pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" PKGBUILD
-          sed -i "s/arch=(.*)/arch=('${{ matrix.arch }}')/" PKGBUILD
+            su builder -c 'makepkg -sf --noconfirm'
 
-          su builder -c 'makepkg -sf --noconfirm'
+            if [ -f *.pkg.tar.zst ]; then
+              for f in *.pkg.tar.zst; do
+                mv "$f" "xmcl-launcher-${{ steps.version.outputs.version }}-${{ matrix.arch }}.pacman"
+              done
+            fi
 
-          if [ -f *.pkg.tar.zst ]; then
-            for f in *.pkg.tar.zst; do
-              mv "$f" "xmcl-launcher-${{ steps.version.outputs.version }}-${{ matrix.arch }}.pacman"
-            done
-          fi
-
-      - name: Upload Arch Package
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-Arch-${{ matrix.arch }}
-          path: ./PKGBUILD/*.pacman
+        - name: Upload Arch Package
+          uses: actions/upload-artifact@v4
+          with:
+            name: build-Arch-${{ matrix.arch }}
+            path: ./PKGBUILD/*.pacman
 
   prepare-release:
     runs-on: ubuntu-latest
