@@ -152,16 +152,21 @@ jobs:
   build-arch:
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.event.head_commit.message, 'chore(release)')
+    if: ${{ startsWith(github.event.head_commit.message, 'chore(release)') || startsWith(github.event.head_commit.message, 'chore(pkgRelease)') }}
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64]
     container: archlinux:latest
 
     steps:
-      - name: Install Git
-        run: pacman -Syu --noconfirm git
-
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
+
+      - name: Install Dependencies
+        run: |
+          pacman -Syu --noconfirm base-devel nodejs npm git
 
       - name: Download Ubuntu Build Artifacts
         uses: actions/download-artifact@v4
@@ -169,37 +174,31 @@ jobs:
           name: build-Linux
           path: ./PKGBUILD/
 
-      - name: Install Dependencies
-        run: |
-          pacman -Syu --noconfirm base-devel nodejs npm git
-
-      - name: Set Version
-        id: pkg_version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
       - name: Update PKGBUILD version
         run: |
           sed -i "s/pkgver=.*/pkgver=${{ env.VERSION }}/" PKGBUILD/PKGBUILD
 
-      - name: Install Dependencies and Build Package
+      - name: Build Package
         run: |
           cd ./PKGBUILD/
           useradd builder -m
           chown -R builder:builder ./
+
+          # Set architecture in PKGBUILD
+          sed -i "s/arch=.*/arch=('${{ matrix.arch }}')/" PKGBUILD
+
           su builder -c 'makepkg -sf --noconfirm'
 
           if [ -f *.pkg.tar.zst ]; then
             for f in *.pkg.tar.zst; do
-              mv "$f" "xmcl-launcher-${{ env.VERSION }}-x86_64.pacman"
+              mv "$f" "xmcl-launcher-${{ env.VERSION }}-${{ matrix.arch }}.pacman"
             done
           fi
 
       - name: Upload Arch Package
         uses: actions/upload-artifact@v4
         with:
-          name: build-Arch
+          name: build-Arch-${{ matrix.arch }}
           path: ./PKGBUILD/*.pacman
 
   prepare-release:
