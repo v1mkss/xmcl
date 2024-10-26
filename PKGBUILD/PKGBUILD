@@ -15,30 +15,28 @@ optdepends=('jre8-openjdk: Minimum requirement for launching older game versions
 
 options=(!strip !debug)
 
-if [ "$CARCH" = "x86_64" ]; then
-    source=("xmcl-$pkgver-amd64.deb")
-    sha256sums=('SKIP')
-elif [ "$CARCH" = "aarch64" ]; then
-    source=("xmcl-$pkgver-arm64.deb")
-    sha256sums=('SKIP')
-fi
-
-prepare() {
-    mkdir -p "${srcdir}"
-    if [ "$CARCH" = "x86_64" ]; then
-        mv "${srcdir}/../xmcl_${pkgver}_amd64.deb" "${srcdir}/xmcl-$pkgver-amd64.deb" || true
-    elif [ "$CARCH" = "aarch64" ]; then
-        mv "${srcdir}/../xmcl_${pkgver}_arm64.deb" "${srcdir}/xmcl-$pkgver-arm64.deb" || true
-    fi
-}
-
 package() {
+    cd "${srcdir}/.."
+
     if [ "$CARCH" = "x86_64" ]; then
-        bsdtar -xf "${srcdir}/xmcl-$pkgver-amd64.deb" data.tar.xz
+        DEB_FILE=$(find . -name "*amd64.deb" -type f)
+        if [ -z "$DEB_FILE" ]; then
+            echo "Error: Could not find amd64 deb file"
+            exit 1
+        fi
     elif [ "$CARCH" = "aarch64" ]; then
-        bsdtar -xf "${srcdir}/xmcl-$pkgver-arm64.deb" data.tar.xz
+        DEB_FILE=$(find . -name "*arm64.deb" -type f)
+        if [ -z "$DEB_FILE" ]; then
+            echo "Error: Could not find arm64 deb file"
+            exit 1
+        fi
     fi
 
+    echo "Found DEB file: $DEB_FILE"
+
+    cd "${srcdir}"
+    bsdtar -xf "../$DEB_FILE" data.tar.xz
     bsdtar -xf data.tar.xz -C "$pkgdir"
+
     install -dv "${pkgdir}/usr/bin"
 }
